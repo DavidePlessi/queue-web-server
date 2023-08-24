@@ -20,8 +20,6 @@ var (
 	queueSignals = make(map[string]chan struct{})
 )
 
-var newElementSignal = make(chan struct{}, 1)
-
 func main() {
 	router := mux.NewRouter()
 
