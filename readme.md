@@ -34,6 +34,7 @@ my-queue-server/
 
    ```bash
    go get -u github.com/gorilla/mux
+   go get -u github.com/iancoleman/orderedmap
    ```
 3. Run the server:
 
