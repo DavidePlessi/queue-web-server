@@ -54,7 +54,11 @@ my-queue-server/
 - Request Body: Element type and body
 - Response: HTTP status code indicating success or failure
 ### Dequeue an Element
-- Endpoint: /{queueName}/dequeue/{elementType}
+- Endpoint: /{queueName}/dequeue
+- Query Params: timeout, maxResponseElements, elementType
+  - timeout: call timeout, default value 30s
+  - maxResponseElements: max number of elements to dequeue, default value 5
+  - elementType: 
 - Method: GET
 - Response: JSON or CSV response based on Accept header
 ### Get All Queues
