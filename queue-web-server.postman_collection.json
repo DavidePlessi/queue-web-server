@@ -1,0 +1,113 @@
+{
+	"info": {
+		"_postman_id": "5ef896f6-c0ee-44fc-9ca2-d31d0bf6a37b",
+		"name": "queue-web-server",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "1661391"
+	},
+	"item": [
+		{
+			"name": "Get Queues",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {}
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/csv",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8080/queues",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"queues"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Enqueue element",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"type\": \"1\",\r\n    \"body\": {\r\n        \"1\": \"6\",\r\n        \"3\": false,\r\n        \"2\": 7\r\n    }\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/prova-coda/enqueue",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"prova-coda",
+						"enqueue"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Dequeue element",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {
+					"accept": true
+				}
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/csv",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8080/prova-coda/dequeue?timeout=30&elementType=1&maxResponseElements=8",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"prova-coda",
+						"dequeue"
+					],
+					"query": [
+						{
+							"key": "timeout",
+							"value": "30"
+						},
+						{
+							"key": "elementType",
+							"value": "1"
+						},
+						{
+							"key": "maxResponseElements",
+							"value": "8"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

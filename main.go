@@ -31,7 +31,9 @@ func main() {
 	router.HandleFunc("/queues", getAllQueues).Methods("GET")
 
 	http.Handle("/", router)
-	http.ListenAndServe(":8080", nil)
+	port := ":8080"
+	fmt.Println("--> All ready on port" + port)
+	http.ListenAndServe(port, nil)
 }
 
 func innerCreateQueue(queueName string) {
@@ -42,6 +44,8 @@ func innerCreateQueue(queueName string) {
 		queues[queueName] = &queue.Queue{Id: queueName}
 		queueLocks[queueName] = &sync.Mutex{}
 		queueSignals[queueName] = make(chan struct{})
+
+		fmt.Println("--> Queue created " + queueName)
 	}
 }
 
@@ -86,6 +90,16 @@ func enqueueElement(w http.ResponseWriter, r *http.Request) {
 	case queueSignals[queueName] <- struct{}{}:
 	default:
 	}
+
+	fmt.Println("--> Element of type " + element.Type + " enqueued to " + queueName)
+
+	jsonOutput, err := json.MarshalIndent(element, "", "    ")
+	if err != nil {
+		fmt.Println("Error during json encoding for console:", err)
+	}
+	fmt.Println("----------ENQUEUED-JSON---------")
+	fmt.Println(string(jsonOutput))
+	fmt.Println("--------------------------------")
 
 	w.WriteHeader(http.StatusCreated)
 }
@@ -133,6 +147,7 @@ func dequeueElement(w http.ResponseWriter, r *http.Request) {
 				i--
 				elementsAddedCount++
 				found = true
+				fmt.Println("--> Element of type " + e.Type + " dequeued from " + queueName)
 			}
 			if elementsAddedCount == maxResponseElements {
 				break
@@ -141,14 +156,24 @@ func dequeueElement(w http.ResponseWriter, r *http.Request) {
 		queueLocks[queueName].Unlock()
 
 		if !found {
+			fmt.Println("--> Waiting for an element to be added to " + queueName)
 			select {
 			case <-queueSignals[queueName]:
 				found = false
 			case <-timer.C:
+				fmt.Println("--> Waiting for an element to be added to " + queueName + " TIMEOUT")
 				found = true
 			}
 		}
 	}
+
+	jsonOutput, err := json.MarshalIndent(elements, "", "    ")
+	if err != nil {
+		fmt.Println("Error during json encoding for console:", err)
+	}
+	fmt.Println("----------DEQUEUED-JSON---------")
+	fmt.Println(string(jsonOutput))
+	fmt.Println("--------------------------------")
 
 	acceptHeader := r.Header.Get("Accept")
 	if acceptHeader == "application/csv" {
