@@ -91,7 +91,7 @@ func enqueueElement(w http.ResponseWriter, r *http.Request) {
 	default:
 	}
 
-	fmt.Println("--> Element of type " + element.Type + " enqueued to " + queueName)
+	fmt.Println("--> Element of type " + strconv.Itoa(element.Type) + " enqueued to " + queueName)
 
 	jsonOutput, err := json.MarshalIndent(element, "", "    ")
 	if err != nil {
@@ -110,7 +110,13 @@ func dequeueElement(w http.ResponseWriter, r *http.Request) {
 
 	queryParams := r.URL.Query()
 	innerCreateQueue(queueName)
-	elementType := queryParams.Get("elementType")
+
+	elementTypeStr := queryParams.Get("elementType")
+	var elementType = -1
+	if elementTypeStr != "" {
+		elementType, _ = strconv.Atoi(elementTypeStr)
+	}
+
 	maxResponseElements, err := strconv.Atoi(queryParams.Get("maxResponseElements"))
 	if err != nil {
 		maxResponseElements = 1
@@ -141,13 +147,13 @@ func dequeueElement(w http.ResponseWriter, r *http.Request) {
 		var elementsAddedCount int = 0
 		for i := 0; i < len(q.Elements); i++ {
 			e := q.Elements[i]
-			if e.Type == elementType || elementType != "" {
+			if e.Type == elementType || elementType == -1 {
 				elements = append(elements, e)
 				q.Elements = append(q.Elements[:i], q.Elements[i+1:]...)
 				i--
 				elementsAddedCount++
 				found = true
-				fmt.Println("--> Element of type " + e.Type + " dequeued from " + queueName)
+				fmt.Println("--> Element of type " + strconv.Itoa(e.Type) + " dequeued from " + queueName)
 			}
 			if elementsAddedCount == maxResponseElements {
 				break
@@ -201,7 +207,7 @@ func dequeueElement(w http.ResponseWriter, r *http.Request) {
 		//}
 
 		for _, value := range elements {
-			w.Write([]byte(value.Type + csvSeparator))
+			w.Write([]byte(strconv.Itoa(value.Type) + csvSeparator))
 			for _, key := range value.Body.Keys() {
 				if value, exists := value.Body.Get(key); exists {
 					w.Write([]byte(fmt.Sprintf("%v", value) + csvSeparator))
