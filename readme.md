@@ -28,7 +28,7 @@ my-queue-server/
 
    ```bash
    git clone https://github.com/DavidePlessi/queue-web-server.git
-   cd my-queue-server
+   cd queue-web-server
    ```
 2. Install required packages:
 
@@ -37,9 +37,13 @@ my-queue-server/
    go get -u github.com/iancoleman/orderedmap
    ```
 3. Run the server:
-
+    
    ```bash
-   go run main.go
+   go run main.go 
+   ```
+   Can accept an argument that specify the server port (default 8080)
+   ```bash
+   go run main.go 8100
    ```
 4. Interact with the API endpoints using tools like curl or Postman.
 
@@ -52,17 +56,35 @@ my-queue-server/
 ### Enqueue an Element
 - Endpoint: /{queueId}/enqueue
 - Method: POST
-- Request Body: Element type and body
+- Request Body: Element type, body, time, expirationTime(optional)
+```
+{
+    "type": 1,
+    "body": {
+        "1": "6",
+        "3": false,
+        "2": 7
+    },
+    "time": "2023-08-25T16:06:21.683798+02:00",
+    "expirationTime": "2023-08-25T16:30:21.683798+02:00"
+}
+```
 - Response: HTTP status code indicating success or failure
 ### Dequeue an Element
 - Endpoint: /{queueName}/dequeue
 - Query Params: timeout, maxResponseElements, elementType
   - timeout: call timeout, default value 30s
   - maxResponseElements: max number of elements to dequeue, default value 5
-  - elementType: 
+  - elementType: the type of element
 - Method: GET
 - Response: JSON or CSV response based on Accept header
-### Get All Queues
+### Get Queues
 - Endpoint: /queues
+- Query Params: queueId (get specific queue by Id)
 - Method: GET
 - Response: JSON response containing all queues and their elements
+### Clear Queues
+- Endpoint: /clear
+- Query Params: queueId (get specific queue by Id)
+- Method: GET
+- Response: HTTP status code indicating success or failure
