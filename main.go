@@ -7,19 +7,13 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
 	"queue-web-server/queue"
 )
 
-var (
-	queues       = make(map[string]*queue.Queue)
-	queuesMux    = sync.Mutex{}
-	queueLocks   = make(map[string]*sync.Mutex)
-	queueSignals = make(map[string]chan struct{})
-)
+var queueContainer = queue.NewQueueContainer()
 
 func main() {
 	port := ":8080"
@@ -33,26 +27,25 @@ func main() {
 	router.HandleFunc(
 		"/{queueName}/dequeue",
 		dequeueElement).Methods("GET")
-	router.HandleFunc("/queues", getAllQueues).Methods("GET")
+	router.HandleFunc("/queues", getQueues).Methods("GET")
+	router.HandleFunc("/clear", clearQueue).Methods("GET")
 
 	http.Handle("/", router)
 	fmt.Println("--> All ready on port" + port)
+
+	//Check for old element every n minutes
+	cleanupTimer := time.NewTicker(1 * time.Minute)
+
+	go func() {
+		fmt.Println("--> Start clear routine")
+		for range cleanupTimer.C {
+			queueContainer.CleanupOldElements()
+		}
+	}()
+
 	err := http.ListenAndServe(port, nil)
 	if err != nil {
 		fmt.Println(err)
-	}
-}
-
-func innerCreateQueue(queueName string) {
-	queuesMux.Lock()
-	defer queuesMux.Unlock()
-
-	if _, exists := queues[queueName]; !exists {
-		queues[queueName] = &queue.Queue{Id: queueName}
-		queueLocks[queueName] = &sync.Mutex{}
-		queueSignals[queueName] = make(chan struct{})
-
-		fmt.Println("--> Queue created " + queueName)
 	}
 }
 
@@ -64,14 +57,13 @@ func createQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	innerCreateQueue(id)
+	queueContainer.EnsureQueueExists(id)
 
 	w.WriteHeader(http.StatusCreated)
 }
 
 func enqueueElement(w http.ResponseWriter, r *http.Request) {
 	queueName := mux.Vars(r)["queueName"]
-	innerCreateQueue(queueName)
 
 	var element queue.Element
 	err := json.NewDecoder(r.Body).Decode(&element)
@@ -80,25 +72,7 @@ func enqueueElement(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	queuesMux.Lock()
-	q, exists := queues[queueName]
-	queuesMux.Unlock()
-
-	if !exists {
-		http.Error(w, "Queue not found", http.StatusNotFound)
-		return
-	}
-
-	queueLocks[queueName].Lock()
-	q.Elements = append(q.Elements, element)
-	queueLocks[queueName].Unlock()
-
-	select {
-	case queueSignals[queueName] <- struct{}{}:
-	default:
-	}
-
-	fmt.Println("--> Element of type " + strconv.Itoa(element.Type) + " enqueued to " + queueName)
+	queueContainer.EnqueueElement(queueName, element)
 
 	jsonOutput, err := json.MarshalIndent(element, "", "    ")
 	if err != nil {
@@ -116,7 +90,6 @@ func dequeueElement(w http.ResponseWriter, r *http.Request) {
 	queueName := vars["queueName"]
 
 	queryParams := r.URL.Query()
-	innerCreateQueue(queueName)
 
 	elementTypeStr := queryParams.Get("elementType")
 	var elementType = -1
@@ -135,50 +108,12 @@ func dequeueElement(w http.ResponseWriter, r *http.Request) {
 		timeoutDuration, _ = time.ParseDuration("30s")
 	}
 
-	queuesMux.Lock()
-	q, exists := queues[queueName]
-	queuesMux.Unlock()
-
-	if !exists {
-		http.Error(w, "Queue not found", http.StatusNotFound)
-		return
-	}
-
-	var elements []queue.Element
-
-	found := false
-	timer := time.NewTimer(timeoutDuration)
-	for !found {
-
-		queueLocks[queueName].Lock()
-		var elementsAddedCount int = 0
-		for i := 0; i < len(q.Elements); i++ {
-			e := q.Elements[i]
-			if e.Type == elementType || elementType == -1 {
-				elements = append(elements, e)
-				q.Elements = append(q.Elements[:i], q.Elements[i+1:]...)
-				i--
-				elementsAddedCount++
-				found = true
-				fmt.Println("--> Element of type " + strconv.Itoa(e.Type) + " dequeued from " + queueName)
-			}
-			if elementsAddedCount == maxResponseElements {
-				break
-			}
-		}
-		queueLocks[queueName].Unlock()
-
-		if !found {
-			fmt.Println("--> Waiting for an element to be added to " + queueName)
-			select {
-			case <-queueSignals[queueName]:
-				found = false
-			case <-timer.C:
-				fmt.Println("--> Waiting for an element to be added to " + queueName + " TIMEOUT")
-				found = true
-			}
-		}
-	}
+	var elements = queueContainer.DequeueElement(
+		queueName,
+		timeoutDuration,
+		elementType,
+		maxResponseElements,
+	)
 
 	jsonOutput, err := json.MarshalIndent(elements, "", "    ")
 	if err != nil {
@@ -231,10 +166,25 @@ func dequeueElement(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getAllQueues(w http.ResponseWriter, r *http.Request) {
-	queuesMux.Lock()
-	defer queuesMux.Unlock()
+func getQueues(w http.ResponseWriter, r *http.Request) {
+	queryParams := r.URL.Query()
+	queueName := queryParams.Get("queueId")
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(queues)
+
+	if queueName == "" {
+		var queues = queueContainer.GetAllQueues()
+		json.NewEncoder(w).Encode(queues)
+	} else {
+		var queues = make(map[string]*queue.Queue)
+		queues[queueName] = queueContainer.GetQueueByName(queueName)
+		json.NewEncoder(w).Encode(queues)
+	}
+
+}
+
+func clearQueue(w http.ResponseWriter, r *http.Request) {
+	queryParams := r.URL.Query()
+	queueName := queryParams.Get("queueId")
+	queueContainer.ClearQueue(queueName)
 }
