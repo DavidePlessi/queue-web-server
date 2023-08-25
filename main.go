@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -21,8 +22,12 @@ var (
 )
 
 func main() {
-	router := mux.NewRouter()
+	port := ":8080"
+	if len(os.Args) > 1 {
+		port = ":" + os.Args[1]
+	}
 
+	router := mux.NewRouter()
 	router.HandleFunc("/create", createQueue).Methods("POST")
 	router.HandleFunc("/{queueName}/enqueue", enqueueElement).Methods("POST")
 	router.HandleFunc(
@@ -31,9 +36,11 @@ func main() {
 	router.HandleFunc("/queues", getAllQueues).Methods("GET")
 
 	http.Handle("/", router)
-	port := ":8080"
 	fmt.Println("--> All ready on port" + port)
-	http.ListenAndServe(port, nil)
+	err := http.ListenAndServe(port, nil)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 func innerCreateQueue(queueName string) {
