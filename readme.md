@@ -57,7 +57,7 @@ my-queue-server/
 - Endpoint: /{queueId}/enqueue
 - Method: POST
 - Request Body: Element type, body, time, expirationTime(optional)
-```
+```json lines
 {
     "type": 1,
     "body": {
@@ -66,7 +66,7 @@ my-queue-server/
         "2": 7
     },
     "time": "2023-08-25T16:06:21.683798+02:00",
-    "expirationTime": "2023-08-25T16:30:21.683798+02:00"
+    "expirationTime": "2023-08-25T16:30:21.683798+02:00" //optional
 }
 ```
 - Response: HTTP status code indicating success or failure
