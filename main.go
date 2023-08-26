@@ -16,6 +16,14 @@ import (
 var queueContainer = queue.NewQueueContainer()
 
 func main() {
+	port, expiredElementCheckInterval := parseArguments()
+	startExpiredElementCheckRoutine(expiredElementCheckInterval)
+	startWebServer(port)
+}
+
+// --- HELP FUNCTIONS
+func parseArguments() (string, int) {
+
 	var port string
 	var expiredElementCheckInterval int
 
@@ -30,8 +38,12 @@ func main() {
 		port = ":8080"
 	}
 
-	if expiredElementCheckInterval > 0 {
-		cleanupTimer := time.NewTicker(time.Duration(expiredElementCheckInterval) * time.Second)
+	return port, expiredElementCheckInterval
+}
+
+func startExpiredElementCheckRoutine(interval int) {
+	if interval > 0 {
+		cleanupTimer := time.NewTicker(time.Duration(interval) * time.Second)
 
 		go func() {
 			fmt.Println("--> Start clear routine")
@@ -40,23 +52,30 @@ func main() {
 			}
 		}()
 	}
+}
 
+func startWebServer(port string) {
 	router := mux.NewRouter()
+
 	router.HandleFunc("/create", createQueue).Methods("POST")
 	router.HandleFunc("/{queueName}/enqueue", enqueueElement).Methods("POST")
-	router.HandleFunc(
-		"/{queueName}/dequeue",
-		dequeueElement).Methods("GET")
+	router.HandleFunc("/{queueName}/dequeue", dequeueElement).Methods("GET")
 	router.HandleFunc("/queues", getQueues).Methods("GET")
 	router.HandleFunc("/clear", clearQueue).Methods("GET")
+
 	http.Handle("/", router)
+
 	fmt.Println("--> All ready on port" + port)
+
 	err := http.ListenAndServe(port, nil)
 	if err != nil {
 		fmt.Println(err)
 	}
 }
 
+//--- HELP FUNCTIONS END
+
+// --- WEB HANDLERS
 func createQueue(w http.ResponseWriter, r *http.Request) {
 	var id string
 	err := json.NewDecoder(r.Body).Decode(&id)
@@ -185,3 +204,5 @@ func clearQueue(w http.ResponseWriter, r *http.Request) {
 	queueName := queryParams.Get("queueId")
 	queueContainer.ClearQueue(queueName)
 }
+
+//--- WEB HANDLERS END
