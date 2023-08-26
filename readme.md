@@ -51,10 +51,15 @@ my-queue-server/
    ```
 4. Interact with the API endpoints using tools like curl or Postman.
 
-## Deploy
+## Build
+The script `build.go` is designed to help you build QWS for different target operating systems 
+and architectures using cross-compilation.
+Usage:
+```bash
+go run build.go -os <os> -arch <arch>
 ```
-go build -o ./dist/1.0.0/qws.exe main.go
-```
+available options for os and arch can be found inside the script.  
+Builds are stored inside `dist` folder `"./dist/<version>/<targetOS>/<targetArch>/<qws|qws.exe>`.
 
 ## API Endpoints
 ### Create a Queue
