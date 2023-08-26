@@ -3,9 +3,9 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -16,9 +16,29 @@ import (
 var queueContainer = queue.NewQueueContainer()
 
 func main() {
-	port := ":8080"
-	if len(os.Args) > 1 {
-		port = ":" + os.Args[1]
+	var port string
+	var expiredElementCheckInterval int
+
+	flag.StringVar(&port, "p", "8080", "Port to listen on")
+	flag.IntVar(&expiredElementCheckInterval, "i", 60, "Interval in seconds to check for expired elements")
+
+	flag.Parse()
+
+	if port != "" {
+		port = ":" + port
+	} else {
+		port = ":8080"
+	}
+
+	if expiredElementCheckInterval > 0 {
+		cleanupTimer := time.NewTicker(time.Duration(expiredElementCheckInterval) * time.Second)
+
+		go func() {
+			fmt.Println("--> Start clear routine")
+			for range cleanupTimer.C {
+				queueContainer.CleanupOldElements()
+			}
+		}()
 	}
 
 	router := mux.NewRouter()
@@ -29,20 +49,8 @@ func main() {
 		dequeueElement).Methods("GET")
 	router.HandleFunc("/queues", getQueues).Methods("GET")
 	router.HandleFunc("/clear", clearQueue).Methods("GET")
-
 	http.Handle("/", router)
 	fmt.Println("--> All ready on port" + port)
-
-	//Check for old element every n minutes
-	cleanupTimer := time.NewTicker(1 * time.Minute)
-
-	go func() {
-		fmt.Println("--> Start clear routine")
-		for range cleanupTimer.C {
-			queueContainer.CleanupOldElements()
-		}
-	}()
-
 	err := http.ListenAndServe(port, nil)
 	if err != nil {
 		fmt.Println(err)
@@ -136,17 +144,6 @@ func dequeueElement(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.Header().Set("Content-Type", "application/csv")
-
-		//var firstElement queue.Element
-		//if len(elements) > 0 {
-		//	//Header
-		//	firstElement = elements[0]
-		//	w.Write([]byte("type" + csvSeparator))
-		//	for _, key := range firstElement.Body.Keys() {
-		//		w.Write([]byte(key + csvSeparator))
-		//	}
-		//	w.Write([]byte(csvLineSeparator))
-		//}
 
 		for _, value := range elements {
 			w.Write([]byte(strconv.Itoa(value.Type) + csvSeparator))

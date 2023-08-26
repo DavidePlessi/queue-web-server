@@ -41,11 +41,18 @@ my-queue-server/
    ```bash
    go run main.go 
    ```
-   Can accept an argument that specify the server port (default 8080)
+   Can accept several arguments:
+    - p: the port on which the server will listen, default value 8080
+    - i: Interval in seconds to check for expired elements, default value 60s
    ```bash
-   go run main.go 8100
+   go run main.go -p 8100 -i 60
    ```
 4. Interact with the API endpoints using tools like curl or Postman.
+
+## Deploy
+```
+go build -o ./dist/queue-web-server.v1.0.0.exe main.go
+```
 
 ## API Endpoints
 ### Create a Queue
