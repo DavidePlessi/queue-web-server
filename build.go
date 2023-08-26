@@ -8,7 +8,7 @@ import (
 	"runtime"
 )
 
-var version = "1.0.2"
+var version = "1.0.1"
 var outputFileName = "qws"
 
 var validOS = map[string]bool{
