@@ -59,7 +59,11 @@ Usage:
 go run build.go -os <os> -arch <arch>
 ```
 available options for os and arch can be found inside the script.  
-Builds are stored inside `dist` folder `"./dist/<version>/<targetOS>/<targetArch>/<qws|qws.exe>`.
+Builds are stored inside `dist` folder `"./dist/qws_<version>_<targetOS>_<targetArch>(|.exe)`.  
+Is it possible to compile all common os/arch combination using the flag -all
+```bash
+go run build.go -all
+```
 
 ## API Endpoints
 ### Create a Queue
