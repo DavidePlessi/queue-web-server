@@ -14,11 +14,13 @@ The project structure is organized as follows:
 my-queue-server/  
 ├── main.go  
 ├── queue/  
+| ├── queueContainer.go  
 │ ├── queue.go  
 │ └── element.go  
 └── README.md
 
 - `main.go`: The main entry point of the application containing the HTTP server setup and API endpoints.
+- `queue/queueContainer.go`: Defines the `QueueContainer` struct and related functions.
 - `queue/queue.go`: Defines the `Queue` struct and related functions.
 - `queue/element.go`: Defines the `Element` struct for queue elements.
 
