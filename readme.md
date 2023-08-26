@@ -14,7 +14,7 @@ The project structure is organized as follows:
 my-queue-server/  
 ├── main.go  
 ├── queue/  
-| ├── queueContainer.go  
+│ ├── queueContainer.go  
 │ ├── queue.go  
 │ └── element.go  
 └── README.md
