@@ -39,10 +39,33 @@ var validArch = map[string]bool{
 	// Add more valid arch values here
 }
 
+var commonCombination = []struct {
+	os   string
+	arch string
+}{
+	{"linux", "amd64"},
+	{"linux", "arm64"},
+	{"linux", "arm"},
+	{"darwin", "amd64"},
+	{"windows", "amd64"},
+	{"windows", "386"},
+	{"freebsd", "amd64"},
+	{"freebsd", "arm64"},
+	{"freebsd", "arm"},
+	{"netbsd", "amd64"},
+	{"netbsd", "arm64"},
+	{"netbsd", "arm"},
+	{"openbsd", "amd64"},
+	{"openbsd", "arm64"},
+	{"openbsd", "arm"},
+}
+
 func main() {
 	var targetOS string
 	var targetArch string
+	var commonFlag bool
 
+	flag.BoolVar(&commonFlag, "all", false, "Build for all popular OS and arch combinations")
 	flag.StringVar(&targetOS, "os", runtime.GOOS, "Target operating system")
 	flag.StringVar(&targetArch, "arch", runtime.GOARCH, "Target architecture")
 	flag.Parse()
@@ -56,13 +79,24 @@ func main() {
 		fmt.Printf("Invalid target architecture: %s\n", targetArch)
 		return
 	}
+	if commonFlag {
+		for _, comb := range commonCombination {
+			buildTarget(comb.os, comb.arch)
+		}
+		return
+	} else {
+		buildTarget(targetOS, targetArch)
+	}
+}
+
+func buildTarget(targetOS string, targetArch string) {
 
 	fmt.Printf("Building for %s %s...\n", targetOS, targetArch)
 
 	os.Setenv("GOOS", targetOS)
 	os.Setenv("GOARCH", targetArch)
 
-	outputName := "./dist/" + version + "/" + targetOS + "/" + targetArch + "/" + outputFileName
+	outputName := "./dist/" + version + "/" + outputFileName + "_" + version + "_" + targetOS + "_" + targetArch
 	if targetOS == "windows" {
 		outputName += ".exe"
 	}
