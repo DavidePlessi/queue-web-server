@@ -53,7 +53,7 @@ my-queue-server/
 
 ## Deploy
 ```
-go build -o ./dist/queue-web-server.v1.0.0.exe main.go
+go build -o ./dist/1.0.0/qws.exe main.go
 ```
 
 ## API Endpoints
