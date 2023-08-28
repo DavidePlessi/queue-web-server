@@ -59,21 +59,11 @@ func startExpiredElementCheckRoutine(interval int) {
 func startWebServer(port string) {
 	router := mux.NewRouter()
 
-	router.HandleFunc("/create", createQueue).Methods("POST")
-	http.Handle("/create", authMiddleware(router))
-
-	router.HandleFunc("/{queueName}/enqueue", enqueueElement).Methods("POST")
-	http.Handle("/{queueName}/enqueue", authMiddleware(router))
-
-	router.HandleFunc("/{queueName}/dequeue", dequeueElement).Methods("GET")
-	http.Handle("/{queueName}/dequeue", authMiddleware(router))
-
-	router.HandleFunc("/queues", getQueues).Methods("GET")
-	http.Handle("/queues", authMiddleware(router))
-
-	router.HandleFunc("/clear", clearQueue).Methods("GET")
-	http.Handle("/clear", authMiddleware(router))
-
+	router.HandleFunc("/create", authMiddleware(createQueue)).Methods("POST")
+	router.HandleFunc("/{queueName}/enqueue", authMiddleware(enqueueElement)).Methods("POST")
+	router.HandleFunc("/{queueName}/dequeue", authMiddleware(dequeueElement)).Methods("GET")
+	router.HandleFunc("/queues", authMiddleware(getQueues)).Methods("GET")
+	router.HandleFunc("/clear", authMiddleware(clearQueue)).Methods("GET")
 	http.Handle("/", router)
 
 	fmt.Println("--> All ready on port" + port)
@@ -87,15 +77,15 @@ func startWebServer(port string) {
 //--- HELP FUNCTIONS END
 
 // -- MIDDLEWARES
-func authMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		authToken := r.Header.Get("Authorization")
 		if authToken != expectedAuthToken && expectedAuthToken != "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		next.ServeHTTP(w, r)
-	})
+		next(w, r)
+	}
 }
 
 //-- MIDDLEWARES END
