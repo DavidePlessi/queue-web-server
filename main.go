@@ -14,6 +14,7 @@ import (
 )
 
 var queueContainer = queue.NewQueueContainer()
+var expectedAuthToken string
 
 func main() {
 	port, expiredElementCheckInterval := parseArguments()
@@ -27,6 +28,7 @@ func parseArguments() (string, int) {
 	var port string
 	var expiredElementCheckInterval int
 
+	flag.StringVar(&expectedAuthToken, "t", "", "Auth token, if not set no auth is required")
 	flag.StringVar(&port, "p", "8080", "Port to listen on")
 	flag.IntVar(&expiredElementCheckInterval, "i", 60, "Interval in seconds to check for expired elements")
 
@@ -58,10 +60,19 @@ func startWebServer(port string) {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/create", createQueue).Methods("POST")
+	http.Handle("/create", authMiddleware(router))
+
 	router.HandleFunc("/{queueName}/enqueue", enqueueElement).Methods("POST")
+	http.Handle("/{queueName}/enqueue", authMiddleware(router))
+
 	router.HandleFunc("/{queueName}/dequeue", dequeueElement).Methods("GET")
+	http.Handle("/{queueName}/dequeue", authMiddleware(router))
+
 	router.HandleFunc("/queues", getQueues).Methods("GET")
+	http.Handle("/queues", authMiddleware(router))
+
 	router.HandleFunc("/clear", clearQueue).Methods("GET")
+	http.Handle("/clear", authMiddleware(router))
 
 	http.Handle("/", router)
 
@@ -74,6 +85,20 @@ func startWebServer(port string) {
 }
 
 //--- HELP FUNCTIONS END
+
+// -- MIDDLEWARES
+func authMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authToken := r.Header.Get("Authorization")
+		if authToken != expectedAuthToken && expectedAuthToken != "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+//-- MIDDLEWARES END
 
 // --- WEB HANDLERS
 func createQueue(w http.ResponseWriter, r *http.Request) {
