@@ -6,5 +6,5 @@ type Element struct {
 	Type           int                   `json:"type"`
 	Body           orderedmap.OrderedMap `json:"body"`
 	Time           string                `json:"time"`
-	ExpirationTime string                `json:"expirationTime"`
+	ExpirationTime string                `json:"expirationTime,omitempty"`
 }

@@ -20,6 +20,7 @@ func (q *Queue) cleanupOldElements(
 	for _, e := range q.Elements {
 		elementExpirationTime, err := time.Parse(time.RFC3339, e.ExpirationTime)
 		if err != nil {
+			updatedElements = append(updatedElements, e)
 			continue
 		}
 
