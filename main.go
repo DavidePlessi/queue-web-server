@@ -63,7 +63,8 @@ func startWebServer(port string) {
 	router.HandleFunc("/{queueName}/enqueue", authMiddleware(enqueueElement)).Methods("POST")
 	router.HandleFunc("/{queueName}/dequeue", authMiddleware(dequeueElement)).Methods("GET")
 	router.HandleFunc("/queues", authMiddleware(getQueues)).Methods("GET")
-	router.HandleFunc("/clear", authMiddleware(clearQueue)).Methods("GET")
+	router.HandleFunc("/clear", authMiddleware(clearQueue)).Methods("POST")
+	router.HandleFunc("/{queueName}/unlock-read", authMiddleware(unlockRead)).Methods("POST")
 	http.Handle("/", router)
 
 	fmt.Println("--> All ready on port" + port)
@@ -130,6 +131,7 @@ func enqueueElement(w http.ResponseWriter, r *http.Request) {
 func dequeueElement(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	queueName := vars["queueName"]
+	//query param lock read
 
 	queryParams := r.URL.Query()
 
@@ -150,12 +152,23 @@ func dequeueElement(w http.ResponseWriter, r *http.Request) {
 		timeoutDuration, _ = time.ParseDuration("30s")
 	}
 
-	var elements = queueContainer.DequeueElement(
+	lockQueueReadStr := queryParams.Get("lockQueueRead")
+	lockRead := false
+	if lockQueueReadStr == "true" {
+		lockRead = true
+	}
+
+	var elements, errDeq = queueContainer.DequeueElement(
 		queueName,
 		timeoutDuration,
 		elementType,
 		maxResponseElements,
+		lockRead,
 	)
+	if errDeq != nil {
+		http.Error(w, errDeq.Error(), http.StatusUnauthorized)
+		return
+	}
 
 	jsonOutput, err := json.MarshalIndent(elements, "", "    ")
 	if err != nil {
@@ -218,6 +231,15 @@ func clearQueue(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 	queueName := queryParams.Get("queueId")
 	queueContainer.ClearQueue(queueName)
+}
+
+func unlockRead(w http.ResponseWriter, r *http.Request) {
+	queueName := mux.Vars(r)["queueName"]
+	if queueName == "" {
+		http.Error(w, "queueId param is required", http.StatusBadRequest)
+		return
+	}
+	queueContainer.UnlockRead(queueName)
 }
 
 //--- WEB HANDLERS END

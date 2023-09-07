@@ -10,7 +10,7 @@ import (
 type QueueContainer struct {
 	Queues   map[string]*Queue
 	QMux     sync.Mutex
-	QLocks   map[string]*sync.Mutex
+	QLocks   map[string]*sync.RWMutex
 	QSignals map[string]chan struct{}
 }
 
@@ -18,7 +18,7 @@ func NewQueueContainer() *QueueContainer {
 	return &QueueContainer{
 		Queues:   make(map[string]*Queue),
 		QMux:     sync.Mutex{},
-		QLocks:   make(map[string]*sync.Mutex),
+		QLocks:   make(map[string]*sync.RWMutex),
 		QSignals: make(map[string]chan struct{}),
 	}
 }
@@ -53,7 +53,8 @@ func (c *QueueContainer) DequeueElement(
 	timeoutDuration time.Duration,
 	elementType int,
 	maxResponseElements int,
-) []Element {
+	lockRead bool,
+) ([]Element, error) {
 	c.EnsureQueueExists(queueName)
 
 	c.QMux.Lock()
@@ -67,6 +68,7 @@ func (c *QueueContainer) DequeueElement(
 		c.QLocks[queueName],
 		c.QSignals[queueName],
 		queueName,
+		lockRead,
 	)
 }
 
@@ -75,8 +77,8 @@ func (c *QueueContainer) EnsureQueueExists(queueName string) *Queue {
 	defer c.QMux.Unlock()
 	_, exists := c.Queues[queueName]
 	if !exists {
-		c.Queues[queueName] = &Queue{Id: queueName}
-		c.QLocks[queueName] = &sync.Mutex{}
+		c.Queues[queueName] = &Queue{Id: queueName, LockRead: false}
+		c.QLocks[queueName] = &sync.RWMutex{}
 		c.QSignals[queueName] = make(chan struct{})
 
 		fmt.Println("--> Queue created " + queueName)
@@ -96,8 +98,8 @@ func (c *QueueContainer) ClearQueue(queueName string) {
 
 	_, exists := c.Queues[queueName]
 	if exists {
-		c.Queues[queueName] = &Queue{Id: queueName}
-		c.QLocks[queueName] = &sync.Mutex{}
+		c.Queues[queueName] = &Queue{Id: queueName, LockRead: false}
+		c.QLocks[queueName] = &sync.RWMutex{}
 		c.QSignals[queueName] = make(chan struct{})
 
 		fmt.Println("--> Queue created " + queueName)
@@ -116,4 +118,14 @@ func (c *QueueContainer) GetAllQueues() map[string]*Queue {
 	defer c.QMux.Unlock()
 
 	return c.Queues
+}
+
+func (c *QueueContainer) UnlockRead(queueName string) {
+	c.EnsureQueueExists(queueName)
+
+	c.QMux.Lock()
+	q, _ := c.Queues[queueName]
+	c.QMux.Unlock()
+
+	q.UnlockRead(c.QLocks[queueName])
 }

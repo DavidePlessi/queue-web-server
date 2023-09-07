@@ -1,0 +1,10 @@
+version: '3'
+services:
+  qws:
+    build:
+      context: .
+    environment:
+      - AUTH_TOKEN=123
+      - EXP_EL_CHK=60
+    ports:
+      - "8080:8080"

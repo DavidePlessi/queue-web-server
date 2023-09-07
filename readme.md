@@ -94,6 +94,7 @@ go run build.go -all
   - timeout: call timeout, default value 30s
   - maxResponseElements: max number of elements to dequeue, default value 5
   - elementType: the type of element
+  - lockQueueRead: lock the queue on read, default value false (needs to be unlocked with /{queueName}/unlock-read)
 - Method: GET
 - Response: JSON or CSV response based on Accept header
 ### Get Queues
@@ -104,5 +105,9 @@ go run build.go -all
 ### Clear Queues
 - Endpoint: /clear
 - Query Params: queueId (get specific queue by Id)
-- Method: GET
+- Method: POST
+- Response: HTTP status code indicating success or failure
+### Unlock Queue
+- Endpoint: /{queueName}/unlock-read
+- Method: POST
 - Response: HTTP status code indicating success or failure

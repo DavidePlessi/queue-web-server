@@ -10,10 +10,11 @@ import (
 type Queue struct {
 	Id       string
 	Elements []Element
+	LockRead bool
 }
 
 func (q *Queue) cleanupOldElements(
-	locker *sync.Mutex,
+	locker *sync.RWMutex,
 ) {
 	locker.Lock()
 	updatedElements := make([]Element, 0)
@@ -39,7 +40,7 @@ func (q *Queue) cleanupOldElements(
 func (q *Queue) enqueueElement(
 	element Element,
 	signal chan struct{},
-	locker *sync.Mutex,
+	locker *sync.RWMutex,
 ) {
 	locker.Lock()
 	q.Elements = append(q.Elements, element)
@@ -55,15 +56,23 @@ func (q *Queue) dequeueElement(
 	timeoutDuration time.Duration,
 	elementType int,
 	maxResponseElements int,
-	locker *sync.Mutex,
+	locker *sync.RWMutex,
 	signal chan struct{},
 	queueName string,
-) []Element {
+	lockRead bool,
+) ([]Element, error) {
 	var elements []Element
+
+	if q.LockRead == true {
+		err := fmt.Errorf("Queue %s read is locked", queueName)
+		return elements, err
+	}
+
 	found := false
 	timer := time.NewTimer(timeoutDuration)
 	for !found {
 		locker.Lock()
+		q.LockRead = lockRead
 		var elementsAddedCount int = 0
 		for i := 0; i < len(q.Elements); i++ {
 			e := q.Elements[i]
@@ -93,5 +102,11 @@ func (q *Queue) dequeueElement(
 		}
 	}
 
-	return elements
+	return elements, nil
+}
+
+func (q *Queue) UnlockRead(locker *sync.RWMutex) {
+	locker.Lock()
+	q.LockRead = false
+	locker.Unlock()
 }
